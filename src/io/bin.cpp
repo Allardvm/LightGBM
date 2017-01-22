@@ -191,8 +191,8 @@ void BinMapper::FindBin(std::vector<double>* values, size_t total_sample_cnt, in
     cnt_in_bin0 = static_cast<int>(sample_size) - used_cnt + counts_int[0];
     // AVM add the NAN bin
     ++num_bin_;
-    bin_2_categorical[num_bin_] = -1;
-    categorical_2_bin_[-1] = static_cast<unsigned_int>(num_bin_);
+    bin_2_categorical_[num_bin_] = -1;
+    categorical_2_bin_[-1] = static_cast<unsigned int>(num_bin_);
   }
 
   // check trival(num_bin_ == 2) feature
