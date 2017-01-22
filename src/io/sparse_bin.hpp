@@ -143,7 +143,7 @@ public:
       [](const std::pair<data_size_t, VAL_T>& a, const std::pair<data_size_t, VAL_T>& b) {
       return a.first < b.first;
     });
-    // load detla array
+    // load delta array
     LoadFromPair(non_zero_pair_);
     // free memory
     non_zero_pair_.clear();

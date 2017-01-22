@@ -67,10 +67,13 @@ public:
       return false;
     }
     if (bin_type_ == BinType::NumericalBin) {
-      for (int i = 0; i < num_bin_; ++i) {
+      for (int i = 0; i < num_bin_ - 1; ++i) {
         if (bin_upper_bound_[i] != other.bin_upper_bound_[i]) {
           return false;
         }
+      }
+      if (!std::isnan(bin_upper_bound_[num_bin_]) || !std::isnan(other.bin_upper_bound_[num_bin_])) {
+        return false;
       }
     } else {
       for (int i = 0; i < num_bin_; i++) {
@@ -110,21 +113,21 @@ public:
   */
   size_t SizesInByte() const;
   /*!
-  * \brief Mapping feature value into bin 
+  * \brief Mapping feature value into bin
   * \param value
   * \return bin for this feature value
   */
   inline unsigned int ValueToBin(double value) const;
 
   /*!
-  * \brief Get the default bin when value is 0 or is firt categorical
+  * \brief Get the default bin when value is 0 or is first categorical
   * \return default bin
   */
   inline uint32_t GetDefaultBin() const {
     if (bin_type_ == BinType::NumericalBin) {
       return ValueToBin(0);
     } else {
-      return 0;
+      return 1;
     }
   }
   /*!
@@ -216,8 +219,8 @@ public:
   *        Note: Unlike Bin, OrderedBin doesn't use ordered gradients and ordered hessians.
   *        Because it is hard to know the relative index in one leaf for sparse bin, since we skipped zero bins.
   * \param leaf Using which leaf's data to construct
-  * \param gradients Gradients, Note:non-oredered by leaf
-  * \param hessians Hessians, Note:non-oredered by leaf
+  * \param gradients Gradients, Note: unordered by leaf
+  * \param hessians Hessians, Note: unordered by leaf
   * \param out Output Result
   */
   virtual void ConstructHistogram(int leaf, const score_t* gradients,
@@ -225,7 +228,7 @@ public:
 
   /*!
   * \brief Split current bin, and perform re-order by leaf
-  * \param leaf Using which leaf's to split
+  * \param leaf Using which leaf's data to split
   * \param right_leaf The new leaf index after perform this split
   * \param left_indices left_indices[i] == true means the i-th data will be on left leaf after split
   */
@@ -263,7 +266,7 @@ public:
 
   /*!
   * \brief Get bin interator of this bin
-  * \param start_idx start index of this 
+  * \param start_idx start index of this
   * \return Iterator of this bin
   */
   virtual BinIterator* GetIterator(data_size_t start_idx) const = 0;
@@ -292,7 +295,7 @@ public:
   /*!
   * \brief Construct histogram of this feature,
   *        Note: We use ordered_gradients and ordered_hessians to improve cache hit chance
-  *        The navie solution is use gradients[data_indices[i]] for data_indices[i] to get gradients, 
+  *        The naive solution is to use gradients[data_indices[i]] for data_indices[i] to get gradients,
            which is not cache friendly, since the access of memory is not continuous.
   *        ordered_gradients and ordered_hessians are preprocessed, and they are re-ordered by data_indices.
   *        Ordered_gradients[i] is aligned with data_indices[i]'s gradients (same for ordered_hessians).
@@ -345,7 +348,7 @@ public:
   * \return The bin data object
   */
   static Bin* CreateBin(data_size_t num_data, int num_bin,
-    double sparse_rate, bool is_enable_sparse, 
+    double sparse_rate, bool is_enable_sparse,
     bool* is_sparse, int default_bin, BinType bin_type);
 
   /*!
@@ -356,7 +359,7 @@ public:
   * \param bin_type type of bin
   * \return The bin data object
   */
-  static Bin* CreateDenseBin(data_size_t num_data, int num_bin, 
+  static Bin* CreateDenseBin(data_size_t num_data, int num_bin,
     int default_bin, BinType bin_type);
 
   /*!
@@ -372,10 +375,13 @@ public:
 };
 
 inline unsigned int BinMapper::ValueToBin(double value) const {
+  if (std::isnan(value)) {
+    return num_bin_;
+  }
   // binary search to find bin
   if (bin_type_ == BinType::NumericalBin) {
     int l = 0;
-    int r = num_bin_ - 1;
+    int r = num_bin_ - 2;
     while (l < r) {
       int m = (r + l - 1) / 2;
       if (value <= bin_upper_bound_[m]) {
@@ -390,7 +396,7 @@ inline unsigned int BinMapper::ValueToBin(double value) const {
     if (categorical_2_bin_.count(int_value)) {
       return categorical_2_bin_.at(int_value);
     } else {
-      return num_bin_ - 1;
+      return num_bin_ - 2;
     }
   }
 }

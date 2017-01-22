@@ -41,11 +41,14 @@ BinMapper::~BinMapper() {
 
 }
 
+// AVM Ensure that max_bin is always at least 2, because it must fit NaN and 0
+// Do not allow NAN to enter into this function, but add a bin[end] for it automatically.
 void BinMapper::FindBin(std::vector<double>* values, size_t total_sample_cnt, int max_bin, BinType bin_type) {
   bin_type_ = bin_type;
   std::vector<double>& ref_values = (*values);
   size_t sample_size = total_sample_cnt;
   int zero_cnt = static_cast<int>(total_sample_cnt - ref_values.size());
+  max_bin = max_bin - 1; // AVM Keep room for NAN
   // find distinct_values first
   std::vector<double> distinct_values;
   std::vector<int> counts;
@@ -152,7 +155,9 @@ void BinMapper::FindBin(std::vector<double>* values, size_t total_sample_cnt, in
       // last bin upper bound
       bin_upper_bound_[bin_cnt - 1] = std::numeric_limits<double>::infinity();
     }
-
+    // AVM Add the NAN bin
+    ++num_bin_;
+    bin_upper_bound_.push_back(NAN);
   } else {
     // convert to int type first
     std::vector<int> distinct_values_int;
@@ -184,10 +189,14 @@ void BinMapper::FindBin(std::vector<double>* values, size_t total_sample_cnt, in
                    please use bigger max_bin or partition this column ");
     }
     cnt_in_bin0 = static_cast<int>(sample_size) - used_cnt + counts_int[0];
+    // AVM add the NAN bin
+    ++num_bin_;
+    bin_2_categorical[num_bin_] = -1;
+    categorical_2_bin_[-1] = static_cast<unsigned_int>(num_bin_);
   }
 
-  // check trival(num_bin_ == 1) feature
-  if (num_bin_ <= 1) {
+  // check trival(num_bin_ == 2) feature
+  if (num_bin_ <= 2) {
     is_trival_ = true;
   } else {
     is_trival_ = false;
@@ -289,7 +298,7 @@ template class OrderedSparseBin<uint16_t>;
 template class OrderedSparseBin<uint32_t>;
 
 
-Bin* Bin::CreateBin(data_size_t num_data, int num_bin, double sparse_rate, 
+Bin* Bin::CreateBin(data_size_t num_data, int num_bin, double sparse_rate,
   bool is_enable_sparse, bool* is_sparse, int default_bin, BinType bin_type) {
   // sparse threshold
   const double kSparseThreshold = 0.8f;
